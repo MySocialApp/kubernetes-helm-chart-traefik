@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "kubernetes.name" . }}-web-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "kubernetes.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  rules:
+  - host: {{ template "kubernetes.name" . }}-web-ui.local
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: {{ template "kubernetes.name" . }}-web-ui
+          servicePort: web

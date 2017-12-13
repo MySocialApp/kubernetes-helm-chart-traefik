@@ -1,0 +1,17 @@
+# Traefik Kubernetes
+traefikNodeSelector: worker
+traefikImageVersion: v1.4.5-alpine
+
+# Traefik config
+traefikConfigRetryAttemps: 3
+traefikConfigAcmeEmail: "my@email.com"
+traefikConfigAcmeDnsProvider: "cloudflare"
+traefikConfigAcmeCloudflareEmail: "my@email.com"
+traefikConfigAcmeCloudflareApiKey: "key"
+traefikConfigAcmeDomains:
+  - "domain1"
+  - "domain2"
+
+# Kubernetes DNS Service IP
+traefikResolvConfNameServer: 10.3.0.10
+traefikResolvConfDomainNameCluster: "fqdn.com"

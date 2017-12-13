@@ -1,0 +1,74 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: {{ template "kubernetes.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "kubernetes.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  updateStrategy:
+    type: "RollingUpdate"
+  template:
+    metadata:
+      labels:
+        app: {{ template "kubernetes.name" . }}
+    spec:
+      nodeSelector:
+        type: {{ .Values.traefikNodeSelector }}
+      serviceAccountName: {{ template "kubernetes.name" . }}
+      terminationGracePeriodSeconds: 60
+      hostNetwork: true
+      initContainers:
+      - name: {{ template "kubernetes.name" . }}-bootstrap
+        image: traefik:{{ .Values.traefikImageVersion }}
+        command: [ '/bin/sh', '-c', '/etc/traefik/bootstrap.sh' ]
+        volumeMounts:
+        - name: traefik-config
+          mountPath: /etc/traefik
+      containers:
+      - image: traefik:{{ .Values.traefikImageVersion }}
+        name: {{ template "kubernetes.name" . }}
+        command:
+          - "/bin/sh"
+          - "-c"
+          - "cat /etc/traefik/resolv.conf > /etc/resolv.conf ; /entrypoint.sh --consul --consul.endpoint=consul:8500"
+        env:
+        - name: CLOUDFLARE_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: externaldns
+              key: cloudflare.api.email
+        - name: CLOUDFLARE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: externaldns
+              key: cloudflare.api.key
+        resources:
+          limits:
+            cpu: 200m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        ports:
+        - name: http
+          hostPort: 80
+          containerPort: 80
+        - name: https
+          hostPort: 443
+          containerPort: 443
+        - name: admin
+          containerPort: 8081
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: traefik-config
+          mountPath: /etc/traefik
+      volumes:
+      - name: traefik-config
+        configMap:
+          name: {{ template "kubernetes.name" . }}
+          defaultMode: 0775
