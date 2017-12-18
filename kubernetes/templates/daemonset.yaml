@@ -17,7 +17,9 @@ spec:
         app: {{ template "kubernetes.name" . }}
     spec:
       nodeSelector:
-        type: {{ .Values.traefikNodeSelector }}
+        {{- range $key, $val := .Values.traefikNodeSelector }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end}}
       serviceAccountName: {{ template "kubernetes.name" . }}
       terminationGracePeriodSeconds: 60
       hostNetwork: true

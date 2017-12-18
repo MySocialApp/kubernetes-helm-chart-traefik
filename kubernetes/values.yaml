@@ -1,8 +1,11 @@
 # Traefik Kubernetes
-traefikNodeSelector: worker
+traefikNodeSelector:
+  node-role.kubernetes.io/node: "true"
+
 traefikImageVersion: v1.4.5-alpine
 
 # Traefik config
+traefikConfigK8sEndpoint: "http://localhost:8080"
 traefikConfigRetryAttemps: 3
 traefikConfigAcmeEmail: "my@email.com"
 traefikConfigAcmeDnsProvider: "cloudflare"

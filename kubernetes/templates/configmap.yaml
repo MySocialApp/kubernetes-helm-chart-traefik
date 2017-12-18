@@ -27,7 +27,7 @@ data:
     address = ":8081"
 
     [kubernetes]
-    endpoint = "http://localhost:8080"
+    endpoint = {{ .Values.traefikConfigK8sEndpoint | quote }}
 
     [consul]
     endpoint = "consul:8500"
@@ -43,7 +43,7 @@ data:
     acmeLogging = true
     dnsProvider = "{{ .Values.traefikConfigAcmeDnsProvider }}"
     delaydontcheckdns = 20
-    #caServer = "https://acme-staging.api.letsencrypt.org/directory"
+    caServer = "https://acme-staging.api.letsencrypt.org/directory"
 
     {{- range .Values.traefikConfigAcmeDomains }}
     [[acme.domains]]
