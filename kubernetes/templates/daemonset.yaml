@@ -51,10 +51,10 @@ spec:
         resources:
           limits:
             cpu: 200m
-            memory: 30Mi
+            memory: 256Mi
           requests:
-            cpu: 100m
-            memory: 20Mi
+            cpu: 200m
+            memory: 128Mi
         ports:
         - name: http
           hostPort: 80
