@@ -43,7 +43,7 @@ data:
     acmeLogging = true
     dnsProvider = "{{ .Values.traefikConfigAcmeDnsProvider }}"
     delaydontcheckdns = 20
-    caServer = "https://acme-staging.api.letsencrypt.org/directory"
+    {{ if .Values.traefikConfigAcmeTest }}caServer = "https://acme-staging.api.letsencrypt.org/directory"{{ end }}
 
     {{- range .Values.traefikConfigAcmeDomains }}
     [[acme.domains]]

@@ -7,6 +7,7 @@ traefikImageVersion: v1.4.5-alpine
 # Traefik config
 traefikConfigK8sEndpoint: "http://localhost:8080"
 traefikConfigRetryAttemps: 3
+traefikConfigAcmeTest: true
 traefikConfigAcmeEmail: "my@email.com"
 traefikConfigAcmeDnsProvider: "cloudflare"
 traefikConfigAcmeCloudflareEmail: "my@email.com"
