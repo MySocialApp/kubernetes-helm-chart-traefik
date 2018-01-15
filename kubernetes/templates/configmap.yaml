@@ -30,7 +30,7 @@ data:
     endpoint = {{ .Values.traefikConfigK8sEndpoint | quote }}
 
     [consul]
-    endpoint = "consul:8500"
+    endpoint = "{{ .Values.traefikConsulServiceName }}:8500"
     watch = true
     prefix = "traefik"
 
@@ -39,7 +39,6 @@ data:
     storage = "traefik/acme/account"
     entryPoint = "https"
     OnHostRule = true
-    onDemand = true
     acmeLogging = true
     dnsProvider = "{{ .Values.traefikConfigAcmeDnsProvider }}"
     delaydontcheckdns = 20
@@ -64,42 +63,62 @@ data:
     search {{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} svc.{{ .Values.traefikResolvConfDomainNameCluster }} {{ .Values.traefikResolvConfDomainNameCluster }}
     options ndots:5
   bootstrap.sh: |-
-    #!/bin/sh
+    #!/bin/bash
 
-    apk update 1>/dev/null || exit 1
-    apk add curl jq 1>/dev/null || exit 1
+    nodes=( consul-0.{{ .Values.traefikConsulServiceName }} consul-1.{{ .Values.traefikConsulServiceName }} consul-2.{{ .Values.traefikConsulServiceName }} {{ .Values.traefikConsulServiceName }} )
+    bootstraped=0
+    contacted=0
 
+    # Copy resolv.conf to get k8s resolvers
     cat /etc/traefik/resolv.conf > /etc/resolv.conf
 
+    # Look at first 3 nodes + 1 on service name (in case of first 3 nodes are down) if bootstrap has not already been done
+    for node in "${nodes[@]}" ; do
+      # Check consul port is open
+      nc -z ${node}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} 8500
+      if [ $? -ne 0 ] ; then
+        contacted=1
+        # If acme folder exist, that mean a bootstrap already occured
+        if [ $(curl http://${node}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -ne 0 ] ; then
+          bootstraped=1
+        fi
+      fi
+      sleep 1
+    done
+
     # Check if boostrap has already been done
-    if [ $(curl http://consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -eq 0 ] ; then
-      sleep $((($RANDOM%10)+1))
-    else
+    if [ $bootstraped -eq 1 ] ; then
       echo "Traefik config already exists, no need to bootrap"
       exit 0
     fi
 
-    # Check consul pod availability before requesting lock
-    nc -z consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} 8500
+    # Check if connection of one of the previous nodes succeed
+    if [ $contacted -eq 0 ] ; then
+      echo "Wasn't able to target one node in the nodes list"
+      exit 1
+    fi
+
+    # Check once again consul-0 pod availability before requesting lock (bootstrap only on consul-0 to get a node lock)
+    nc -z consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} 8500
     if [ $? -ne 0 ] ; then
-      echo "Should exit, couldn't locate consul pod: consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} port 8500"
+      echo "Should exit, couldn't locate consul pod: consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} port 8500"
       exit 1
     fi
 
     # Get session ID
-    id=$(curl -XPUT http://consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/session/create 2>/dev/null | jq -r '.ID')
+    id=$(curl -XPUT http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/session/create 2>/dev/null | jq -r '.ID')
 
     # Check if a lock has been acquired and get one if not the case to bootstrap
-    if [ "$(curl -XPUT http://consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?acquire=$id -d $(hostname) 2>/dev/null)" == "true" ] ; then
+    if [ "$(curl -XPUT http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?acquire=$id -d $(hostname) 2>/dev/null)" == "true" ] ; then
       echo "Traefik bootstrap"
       traefik storeconfig --configfile=/etc/traefik/traefik.toml && \
-      curl -XDELETE http://consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/storagefile 2>/dev/null
+      curl -XDELETE http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/storagefile 2>/dev/null
       # Release lock and delete kv entry
-      curl -XPUT "http://consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?acquire=$id" 2>/dev/null
+      curl -XPUT "http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?acquire=$id" 2>/dev/null
     else
       # Wait until bootstrap ended
       counter=0
-      while [ $(curl http://consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -eq 0 ] ; do
+      while [ $(curl http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -eq 0 ] ; do
         if [[ "$counter" -gt 300 ]]; then
           echo "After 1 min, the traefik bootstrap has not been done, exiting"
           exit 1
@@ -110,7 +129,7 @@ data:
     fi
 
     # Delete session
-    curl -XPUT "http://consul-0.consul.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/session/destroy/$id" 2>/dev/null
+    curl -XPUT "http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/session/destroy/$id" 2>/dev/null
 
-    echo "Bootstrap has been detected, traefik container will start"
+    echo "Bootstrap has already been done, traefik container will start"
     exit 0

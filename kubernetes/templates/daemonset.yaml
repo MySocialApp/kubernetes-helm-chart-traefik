@@ -25,7 +25,7 @@ spec:
       hostNetwork: true
       initContainers:
       - name: {{ template "kubernetes.name" . }}-bootstrap
-        image: traefik:{{ .Values.traefikImageVersion }}
+        image: quay.io/mysocialapp/docker-traefik-bootstrap-ha:{{ .Values.traefikImageVersion }}
         command: [ '/bin/sh', '-c', '/etc/traefik/bootstrap.sh' ]
         volumeMounts:
         - name: traefik-config
@@ -36,7 +36,7 @@ spec:
         command:
           - "/bin/sh"
           - "-c"
-          - "cat /etc/traefik/resolv.conf > /etc/resolv.conf ; /entrypoint.sh --consul --consul.endpoint=consul:8500"
+          - "cat /etc/traefik/resolv.conf > /etc/resolv.conf ; /entrypoint.sh --consul --consul.endpoint={{ .Values.traefikConsulServiceName }}:8500"
         env:
         - name: CLOUDFLARE_EMAIL
           valueFrom:

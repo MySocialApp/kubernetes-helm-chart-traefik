@@ -19,3 +19,4 @@ traefikConfigAcmeDomains:
 # Kubernetes DNS Service IP
 traefikResolvConfNameServer: 10.3.0.10
 traefikResolvConfDomainNameCluster: "fqdn.com"
+traefikConsulServiceName: consul
