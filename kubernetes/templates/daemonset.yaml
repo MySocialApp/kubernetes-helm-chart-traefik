@@ -26,7 +26,10 @@ spec:
       initContainers:
       - name: {{ template "kubernetes.name" . }}-bootstrap
         image: quay.io/mysocialapp/docker-traefik-bootstrap-ha:{{ .Values.traefikImageVersion }}
-        command: [ '/bin/sh', '-c', '/etc/traefik/bootstrap.sh' ]
+        command:
+          - "/bin/sh"
+          - "-c"
+          - "cat /etc/traefik/resolv.conf > /etc/resolv.conf ; /bin/sh -c /etc/traefik/bootstrap.sh"
         volumeMounts:
         - name: traefik-config
           mountPath: /etc/traefik

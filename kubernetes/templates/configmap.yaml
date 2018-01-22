@@ -40,8 +40,9 @@ data:
     entryPoint = "https"
     OnHostRule = true
     acmeLogging = true
-    dnsProvider = "{{ .Values.traefikConfigAcmeDnsProvider }}"
-    delaydontcheckdns = 20
+    [acme.dnsChallenge]
+    provider = "{{ .Values.traefikConfigAcmeDnsProvider }}"
+    delayBeforeCheck = 20
     {{ if .Values.traefikConfigAcmeTest }}caServer = "https://acme-staging.api.letsencrypt.org/directory"{{ end }}
 
     {{- range .Values.traefikConfigAcmeDomains }}
