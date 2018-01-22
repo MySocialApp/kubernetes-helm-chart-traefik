@@ -69,14 +69,11 @@ data:
     bootstraped=0
     contacted=0
 
-    # Copy resolv.conf to get k8s resolvers
-    cat /etc/traefik/resolv.conf > /etc/resolv.conf
-
     # Look at first 3 nodes + 1 on service name (in case of first 3 nodes are down) if bootstrap has not already been done
     for node in "${nodes[@]}" ; do
       # Check consul port is open
       nc -z ${node}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} 8500
-      if [ $? -ne 0 ] ; then
+      if [ $? -eq 0 ] ; then
         contacted=1
         # If acme folder exist, that mean a bootstrap already occured
         if [ $(curl http://${node}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -ne 0 ] ; then
