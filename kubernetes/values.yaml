@@ -2,7 +2,7 @@
 traefikNodeSelector:
   node-role.kubernetes.io/node: "true"
 
-traefikImageVersion: v1.4.5-alpine
+traefikImageVersion: v1.5.0-rc5-alpine
 
 # Traefik config
 traefikConfigK8sEndpoint: "http://localhost:8080"
