@@ -8,7 +8,7 @@ It you want to use [let's encrypt](https://letsencrypt.org/) to generate certifi
 
 We made this chart because we want to get rid of manually managing bootstraping onto consul and have let's encrypt support with DNS challenge.
 
-# What does this cahrt do
+# What does this chart do
 
 * Deploy traefik
 * Boostrap traefik configuration inside consul kv store
