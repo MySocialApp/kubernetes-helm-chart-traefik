@@ -112,12 +112,12 @@ data:
       traefik storeconfig --configfile=/etc/traefik/traefik.toml && \
       curl -XDELETE http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/storagefile 2>/dev/null
       # Release lock and delete kv entry
-      curl -XPUT "http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?acquire=$id" 2>/dev/null
+      curl -XPUT "http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?release=$id" 2>/dev/null
     else
       # Wait until bootstrap ended
       counter=0
       while [ $(curl http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -eq 0 ] ; do
-        if [[ "$counter" -gt 300 ]]; then
+        if [[ "$counter" -gt 60 ]]; then
           echo "After 1 min, the traefik bootstrap has not been done, exiting"
           exit 1
         fi
