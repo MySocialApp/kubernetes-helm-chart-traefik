@@ -26,6 +26,12 @@ data:
     [web]
     address = ":8081"
 
+    [metrics]
+      [metrics.prometheus]
+      entryPoint = "traefik"
+      [metrics.statistics]
+      recentErrors = 10
+
     [kubernetes]
     endpoint = {{ .Values.traefikConfigK8sEndpoint | quote }}
 
