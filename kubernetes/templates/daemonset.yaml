@@ -21,7 +21,7 @@ spec:
         {{ $key }}: {{ $val | quote }}
         {{- end}}
       serviceAccountName: {{ template "kubernetes.name" . }}
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 3600
       hostNetwork: true
       initContainers:
       - name: {{ template "kubernetes.name" . }}-bootstrap
@@ -29,13 +29,15 @@ spec:
         command:
           - "/bin/sh"
           - "-c"
-          - "cat /etc/traefik/resolv.conf > /etc/resolv.conf ; /bin/sh -c /etc/traefik/bootstrap.sh"
+          - "cat /etc/traefik/resolv.conf > /etc/resolv.conf ; /bin/sh -c /traefik-scripts/bootstrap.sh"
         volumeMounts:
         - name: traefik-config
           mountPath: /etc/traefik
+        - name: traefik-scripts
+          mountPath: /traefik-scripts
       containers:
-      - image: traefik:{{ .Values.traefikImageVersion }}
-        name: {{ template "kubernetes.name" . }}
+      - name: {{ template "kubernetes.name" . }}
+        image: quay.io/mysocialapp/docker-traefik-bootstrap-ha:{{ .Values.traefikImageVersion }}
         command:
           - "/bin/sh"
           - "-c"
@@ -51,6 +53,27 @@ spec:
             secretKeyRef:
               name: externaldns
               key: cloudflare.api.key
+        {{ if .Values.traefikCloudflareDnsUpdate }}
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - |
+                {{- range $rrdns, $zoneid := .Values.traefikCloudflareDnsUpdate }}
+                /traefik-scripts/lifecycle.sh start {{ $zoneid | quote}} {{ $rrdns | quote }}
+                {{- end}}
+          preStop:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - |
+                {{- range $rrdns, $zoneid := .Values.traefikCloudflareDnsUpdate }}
+                /traefik-scripts/lifecycle.sh stop {{ $zoneid | quote}} {{ $rrdns | quote }}
+                {{- end}}
+        {{ end }}
         resources:
           limits:
             cpu: 200m
@@ -72,8 +95,13 @@ spec:
         volumeMounts:
         - name: traefik-config
           mountPath: /etc/traefik
+        - name: traefik-scripts
+          mountPath: /traefik-scripts
       volumes:
       - name: traefik-config
         configMap:
           name: {{ template "kubernetes.name" . }}
+      - name: traefik-scripts
+        configMap:
+          name: {{ template "kubernetes.name" . }}-scripts
           defaultMode: 0775

@@ -1,0 +1,232 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "kubernetes.name" . }}-scripts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "kubernetes.name" . }}-scripts
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  bootstrap.sh: |-
+    #!/bin/bash
+
+    nodes=( consul-0.{{ .Values.traefikConsulServiceName }} consul-1.{{ .Values.traefikConsulServiceName }} consul-2.{{ .Values.traefikConsulServiceName }} {{ .Values.traefikConsulServiceName }} )
+    bootstraped=0
+    contacted=0
+
+    # Look at first 3 nodes + 1 on service name (in case of first 3 nodes are down) if bootstrap has not already been done
+    for node in "${nodes[@]}" ; do
+      # Check consul port is open
+      nc -z ${node}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} 8500
+      if [ $? -eq 0 ] ; then
+        contacted=1
+        # If acme folder exist, that mean a bootstrap already occured
+        if [ $(curl http://${node}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -ne 0 ] ; then
+          bootstraped=1
+        fi
+      fi
+      sleep 1
+    done
+
+    # Check if boostrap has already been done
+    if [ $bootstraped -eq 1 ] ; then
+      echo "Traefik config already exists, no need to bootrap"
+      exit 0
+    fi
+
+    # Check if connection of one of the previous nodes succeed
+    if [ $contacted -eq 0 ] ; then
+      echo "Wasn't able to target one node in the nodes list"
+      exit 1
+    fi
+
+    # Check once again consul-0 pod availability before requesting lock (bootstrap only on consul-0 to get a node lock)
+    nc -z consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} 8500
+    if [ $? -ne 0 ] ; then
+      echo "Should exit, couldn't locate consul pod: consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} port 8500"
+      exit 1
+    fi
+
+    # Get session ID
+    id=$(curl -XPUT http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/session/create 2>/dev/null | jq -r '.ID')
+
+    # Check if a lock has been acquired and get one if not the case to bootstrap
+    if [ "$(curl -XPUT http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?acquire=$id -d $(hostname) 2>/dev/null)" == "true" ] ; then
+      echo "Traefik bootstrap"
+      traefik storeconfig --configfile=/etc/traefik/traefik.toml && \
+      curl -XDELETE http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/storagefile 2>/dev/null
+      # Release lock and delete kv entry
+      curl -XPUT "http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/locks/traefik-bootstrap/.lock\?release=$id" 2>/dev/null
+    else
+      # Wait until bootstrap ended
+      counter=0
+      while [ $(curl http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/kv/traefik/acme/ 2>/dev/null | wc -c) -eq 0 ] ; do
+        if [[ "$counter" -gt 60 ]]; then
+          echo "After 1 min, the traefik bootstrap has not been done, exiting"
+          exit 1
+        fi
+        sleep 2
+        counter=$((counter+1))
+      done
+    fi
+
+    # Delete session
+    curl -XPUT "http://consul-0.{{ .Values.traefikConsulServiceName }}.{{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }}:8500/v1/session/destroy/$id" 2>/dev/null
+
+    echo "Bootstrap has already been done, traefik container will start"
+    exit 0
+  lifecycle.sh: |-
+    #!/bin/bash
+
+    if [ "$#" -ne 3 ]; then
+        echo "Usage: $0 [start|stop] [zone_id] [rr_a]"
+        echo "* start|stop: define if the pod is starting or stopping"
+        echo "* zone_id:  Cloudflare zoneid as indicated on Cloudflare home page"
+        echo "* rr_a: Round Robin A DNS record"
+        exit 1
+    fi
+
+    # Vars
+    ACTION=$1
+    CLOUDFLARE_ZONE_ID=$2
+    CLOUDFLARE_RR_A=$3
+    CLOUDFLARE_TTL=120
+    PUBLIC_IP=$(ip route | awk '/default/ { print $7 }')
+    # https://twitgoo.com/best-free-dns-servers/
+    PUBLIC_DNS_LIST=( 8.8.8.8 208.67.222.222 209.244.0.3 )
+    TOTAL_DNS=${#PUBLIC_DNS_LIST[@]}
+
+    function get_record_id() {
+      curl -sX GET "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/dns_records?type=A&name=${CLOUDFLARE_RR_A}&content=${PUBLIC_IP}&match=all" \
+         -H "X-Auth-Email: $CLOUDFLARE_EMAIL" \
+         -H "X-Auth-Key: $CLOUDFLARE_API_KEY" \
+         -H "Content-Type: application/json" | jq -r '.result[0].id'
+    }
+
+    function record_availability() {
+      global_counter=0
+
+      for dns_srv in "${PUBLIC_DNS_LIST[@]}" ; do
+        counter=0
+        for retry in {1..3} ; do
+          if [ $(dig A $CLOUDFLARE_RR_A @${dns_srv} +short | grep -c "^$PUBLIC_IP") != 0 ] ; then
+            counter=$((counter+1))
+          fi
+          sleep 0.5
+        done
+        test $counter != 0 && global_counter=$((global_counter+1))
+      done
+      echo $global_counter
+    }
+
+    function add_record() {
+      echo "[+] Adding DNS record"
+      record_id=$(get_record_id)
+      if [ $record_id != 'null' ] ; then
+        echo "[+] Entry '$CLOUDFLARE_RR_A' already exist for '$PUBLIC_IP' on Cloudflare"
+        return
+      fi
+
+      result=`curl -sX POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/dns_records" \
+           -H "X-Auth-Email: $CLOUDFLARE_EMAIL" \
+           -H "X-Auth-Key: $CLOUDFLARE_API_KEY" \
+           -H "Content-Type: application/json" \
+           --data "{\"type\":\"A\",\"name\":\"$CLOUDFLARE_RR_A\",\"content\":\"$PUBLIC_IP\",\"ttl\":\"$CLOUDFLARE_TTL\",\"proxied\":false}" | jq '.success'`
+
+      if [ $result != 'true' ] ; then
+        echo "[-] Wasn't able to add DNS entry"
+        sleep $CLOUDFLARE_TTL
+        exit 1
+      fi
+    }
+
+    function delete_record() {
+      echo "[+] Removing DNS record"
+      record_id=$(get_record_id)
+      if [ $record_id == 'null' ] ; then
+        echo "[-] Wasn't able to get Cloudflare record id, can't delete entry"
+        return
+      fi
+
+      result=`curl -sX DELETE "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/dns_records/$record_id" \
+           -H "X-Auth-Email: $CLOUDFLARE_EMAIL" \
+           -H "X-Auth-Key: $CLOUDFLARE_API_KEY" \
+           -H "Content-Type: application/json" \
+           --data "{\"type\":\"A\",\"name\":\"$CLOUDFLARE_RR_A\",\"content\":\"$PUBLIC_IP\",\"ttl\":\"$CLOUDFLARE_TTL\",\"proxied\":false}" | jq '.success'`
+
+      if [ $result != 'true' ] ; then
+        echo "[-] Wasn't able to delete Cloudflare DNS entry"
+        sleep $CLOUDFLARE_TTL
+        exit 1
+      fi
+    }
+
+    function check_loop() {
+      max_wait=$1
+      availability_diff_from=$2
+
+      counter=0
+      while [ $counter -le $max_wait ] ; do
+        availability=$(record_availability)
+        if [ "$availability" != "$availability_diff_from" ] ; then
+          echo "$(date): DNS record '$CLOUDFLARE_RR_A' accessible from $availability server(s) on $TOTAL_DNS"
+          counter=$((counter+1))
+          sleep 15
+        else
+          return 0
+        fi
+      done
+      return 1
+    }
+
+    function post_start() {
+      counter=0
+
+      echo "[+] Wait up to 60s until traefik is up"
+      while [ $(curl -s "http://localhost:8081/ping") != 'OK' ] ; do
+        if [ $counter —le 20 ] ; then
+          sleep 3
+          counter=$((counter+1))
+        else
+          echo "[-] Waited 60s, Traefik doesn't seem up, exit"
+          exit 1
+        fi
+      done
+      echo "[+] Traefik service is up"
+
+      add_record
+
+      # Checking but do not exit on error if some DNS servers are not able to get the record
+      check_loop 240 $TOTAL_DNS
+      if [ "$?" == "1" ] ; then
+        echo "[-] Waited 30 min and entry is still not in all DNS list"
+      else
+        echo "[+] All public DNS have $PUBLIC_IP record"
+      fi
+    }
+
+    function pre_stop() {
+      delete_record
+      echo "[+] Sleeping ${CLOUDFLARE_TTL}s, then regularly check up to 30 min to ensure there is no dns entry anymore on public DNS servers"
+      sleep $CLOUDFLARE_TTL
+
+      # Ensuring the DNS not present anymore or wait until timeout
+      check_loop 240 0
+      if [ "$?" == "1" ] ; then
+        echo "[-] Waited 30 min and entry is still present in some public DNS servers, exit"
+        exit 1
+      fi
+      echo "[+] Record '$CLOUDFLARE_RR_A' not present anymore on $TOTAL_DNS public dns servers"
+    }
+
+    if [ $ACTION == 'start' ] ; then
+      post_start
+    elif [ $ACTION == 'stop' ] ; then
+      pre_stop
+    else
+      echo "You need to choose between start or stop"
+      exit 1
+    fi
+    exit 0

@@ -13,6 +13,7 @@ We made this chart because we want to get rid of manually managing bootstraping 
 * Deploy traefik
 * Boostrap traefik configuration inside consul kv store
 * Manage let's encrypt certificates with DNS challenge on Cloudflare
+* Manage Cloudflare DNS to register and unregister on start and stop (useful if you do not have a load balancer on top of Traefik)
 
 # Use this chart
 
