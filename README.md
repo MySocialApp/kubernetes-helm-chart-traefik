@@ -13,7 +13,7 @@ We made this chart because we want to get rid of manually managing bootstraping 
 * Deploy traefik
 * Boostrap traefik configuration inside consul kv store
 * Manage let's encrypt certificates with DNS challenge on Cloudflare
-* Manage Cloudflare DNS to register and unregister on start and stop (useful if you do not have a load balancer on top of Traefik)
+* Manage Cloudflare DNS to register and unregister on start and stop (useful if you do not have a load balancer on top of Traefik). When you're running on premise environment, one thing is to make round robin on you physical hosts. This way, your ingress services are redirected to this round robin DNS name to make it distributed. That mean if a node reboot, you're going to miss on 1 node on X. To avoid that, when a traefik is going to be shutdown, it automatically pull off this node from the round robin pool. This way, it ensures, no miss will occur. Then, when it start again, it puts the node back in in the round robin pool and check its presence against several public DNS servers to ensure of its availability.
 
 # Use this chart
 
