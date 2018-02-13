@@ -219,6 +219,8 @@ data:
         exit 1
       fi
       echo "[+] Record '$CLOUDFLARE_RR_A' not present anymore on $TOTAL_DNS public dns servers"
+      echo "[+] Killing traefik"
+      pkill traefik
     }
 
     if [ $ACTION == 'start' ] ; then
