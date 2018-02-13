@@ -62,7 +62,7 @@ spec:
               - "-c"
               - |
                 {{- range $rrdns, $zoneid := .Values.traefikCloudflareDnsUpdate }}
-                /traefik-scripts/lifecycle.sh start {{ $zoneid | quote}} {{ $rrdns | quote }}
+                /traefik-scripts/lifecycle.sh start {{ $zoneid | quote}} {{ $rrdns | quote }} >> /preStart_{{ $rrdns }}_{{ $zoneid }}.log 2>&1
                 {{- end}}
           preStop:
             exec:
@@ -71,7 +71,7 @@ spec:
               - "-c"
               - |
                 {{- range $rrdns, $zoneid := .Values.traefikCloudflareDnsUpdate }}
-                /traefik-scripts/lifecycle.sh stop {{ $zoneid | quote}} {{ $rrdns | quote }}
+                /traefik-scripts/lifecycle.sh stop {{ $zoneid | quote}} {{ $rrdns | quote }} >> /preStop_{{ $rrdns }}_{{ $zoneid }}.log 2>&1
                 {{- end}}
         {{ end }}
         resources:
