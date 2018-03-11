@@ -23,8 +23,8 @@ data:
     [retry]
     attempts = {{ .Values.traefikConfigRetryAttemps }}
 
-    [web]
-    address = ":8081"
+    [api]
+    dashboard = true
 
     [metrics]
       [metrics.prometheus]
