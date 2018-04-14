@@ -1,0 +1,20 @@
+{{ if .Values.traefikPrometheusScrap }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ template "kubernetes.name" . }}-{{ .Release.Namespace }}
+  namespace: observability
+  labels:
+    app: {{ template "kubernetes.name" . }}
+    prometheus: observability
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "kubernetes.name" . }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+  - port: web
+    interval: 15s
+{{ end }}
