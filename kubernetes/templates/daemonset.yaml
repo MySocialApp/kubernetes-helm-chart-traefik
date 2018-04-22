@@ -89,7 +89,7 @@ spec:
           hostPort: 443
           containerPort: 443
         - name: admin
-          containerPort: 8081
+          containerPort: 8080
         securityContext:
           privileged: true
         volumeMounts:
