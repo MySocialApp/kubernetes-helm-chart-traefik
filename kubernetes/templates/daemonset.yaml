@@ -75,12 +75,7 @@ spec:
                 {{- end}}
         {{ end }}
         resources:
-          limits:
-            cpu: 200m
-            memory: 256Mi
-          requests:
-            cpu: 200m
-            memory: 128Mi
+{{ toYaml .Values.traefikConfig.resources | indent 10 }}
         ports:
         - name: http
           hostPort: 80

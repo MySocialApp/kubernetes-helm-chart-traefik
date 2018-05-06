@@ -3,6 +3,14 @@ traefikNodeSelector:
   node-role.kubernetes.io/node: "true"
 
 traefikImageVersion: v1.6.0-rc6-alpine
+traefikConfig:
+  resources:
+    limits:
+      cpu: 400m
+      memory: 256Mi
+    requests:
+      cpu: 200m
+      memory: 128Mi
 
 # Traefik config
 traefikConfigK8sEndpoint: "http://localhost:8080"
