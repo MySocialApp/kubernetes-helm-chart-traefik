@@ -64,6 +64,7 @@ data:
         entryPoint = "https"
       [entryPoints.https]
       address = ":443"
+      compress = true
         [entryPoints.https.tls]
   resolv.conf: |-
     nameserver {{ .Values.traefikResolvConfNameServer }}
