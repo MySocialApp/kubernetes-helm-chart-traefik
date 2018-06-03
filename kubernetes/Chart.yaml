@@ -1,4 +1,4 @@
 apiVersion: v1
 description: Traefik Helm chart for Kubernetes
 name: traefik
-version: 0.8.2
+version: 0.8.3
