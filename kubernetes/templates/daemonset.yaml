@@ -43,6 +43,7 @@ spec:
           - "-c"
           - "cat /etc/traefik/resolv.conf > /etc/resolv.conf ; /entrypoint.sh --consul --consul.endpoint={{ .Values.traefikConsulServiceName }}:8500"
         env:
+        {{ if .Values.traefikCloudflareDnsUpdate }}
         - name: CLOUDFLARE_EMAIL
           valueFrom:
             secretKeyRef:
@@ -53,7 +54,6 @@ spec:
             secretKeyRef:
               name: externaldns
               key: cloudflare.api.key
-        {{ if .Values.traefikCloudflareDnsUpdate }}
         lifecycle:
           postStart:
             exec:

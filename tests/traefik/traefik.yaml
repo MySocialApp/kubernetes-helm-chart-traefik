@@ -15,24 +15,15 @@ traefikConfig:
 # Traefik config
 traefikConfigK8sEndpoint: "http://localhost:8080"
 traefikConfigRetryAttemps: 3
-traefikEnableAcme: true
-traefikConfigAcmeTest: true
-traefikConfigAcmeEmail: "my@email.com"
-traefikConfigAcmeDnsProvider: "cloudflare"
-traefikConfigAcmeCloudflareEmail: "my@email.com"
-traefikConfigAcmeCloudflareApiKey: "key"
-traefikConfigAcmeDomains:
-  - "domain1"
-  - "domain2"
+traefikEnableAcme: false
 
 # Cloudflare DNS update
 traefikCloudflareDnsUpdate: {}
-  # roundRobinDnsRecord: cloudflareZoneId
 
 # Kubernetes DNS Service IP
-traefikResolvConfNameServer: 10.3.0.10
-traefikResolvConfDomainNameCluster: "fqdn.com"
+traefikResolvConfNameServer: 10.244.1.3
+traefikResolvConfDomainNameCluster: "cluster.local"
 traefikConsulServiceName: consul
 
 # Prometheus scraper
-traefikPrometheusScrap: true
+traefikPrometheusScrap: false

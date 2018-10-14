@@ -80,6 +80,8 @@ data:
   lifecycle.sh: |-
     #!/bin/bash
 
+    {{ if not .Values.traefikCloudflareDnsUpdate }}exit 0{{ end }}
+
     if [ "$#" -ne 3 ]; then
         echo "Usage: $0 [start|stop] [zone_id] [rr_a]"
         echo "* start|stop: define if the pod is starting or stopping"

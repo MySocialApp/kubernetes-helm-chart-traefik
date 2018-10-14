@@ -1,0 +1,4 @@
+.idea/
+tests/.vagrant
+dind-cluster-*
+kubernetes-helm-chart-consul/

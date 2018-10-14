@@ -40,6 +40,7 @@ data:
     watch = true
     prefix = "traefik"
 
+    {{ if .Values.traefikEnableAcme }}
     [acme]
     email = "{{ .Values.traefikConfigAcmeEmail }}"
     storage = "traefik/acme/account"
@@ -55,6 +56,7 @@ data:
     [[acme.domains]]
       main = {{ . | quote }}
     {{- end }}
+    {{ end }}
 
     [entryPoints]
       [entryPoints.http]
