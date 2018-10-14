@@ -1,4 +1,4 @@
-# Kubernetes Helm Chart for Treafik HA
+# Kubernetes Helm Chart for Treafik HA [![Build Status](https://travis-ci.org/MySocialApp/kubernetes-helm-chart-traefik.svg?branch=master)](https://travis-ci.org/MySocialApp/kubernetes-helm-chart-traefik)
 
 You can find here a helm chart we're using at [MySocialApp](https://mysocialapp.io) (iOS and Android social app builder - SaaS)
 
