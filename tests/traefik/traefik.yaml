@@ -2,7 +2,6 @@
 traefikNodeSelector:
   node-role.kubernetes.io/node: "true"
 
-traefikImageVersion: v1.7.1-alpine
 traefikConfig:
   resources:
     limits:
