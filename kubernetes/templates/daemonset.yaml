@@ -89,12 +89,12 @@ spec:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 30
+          initialDelaySeconds: 300
           periodSeconds: 10
         livenessProbe:
           tcpSocket:
             port: 443
-          initialDelaySeconds: 30
+          initialDelaySeconds: 300
           periodSeconds: 10
         securityContext:
           privileged: true
