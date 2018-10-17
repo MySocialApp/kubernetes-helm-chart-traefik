@@ -135,7 +135,7 @@ data:
            -H "X-Auth-Email: $CLOUDFLARE_EMAIL" \
            -H "X-Auth-Key: $CLOUDFLARE_API_KEY" \
            -H "Content-Type: application/json" \
-           --data "{\"type\":\"A\",\"name\":\"$CLOUDFLARE_RR_A\",\"content\":\"$PUBLIC_IP\",\"ttl\":\"$CLOUDFLARE_TTL\",\"proxied\":false}" | jq '.success'`
+           --data "{\"type\":\"A\",\"name\":\"$CLOUDFLARE_RR_A\",\"content\":\"$PUBLIC_IP\",\"ttl\":$CLOUDFLARE_TTL,\"proxied\":false}" | jq '.success'`
 
       if [ $result != 'true' ] ; then
         echo "[-] Wasn't able to add DNS entry"
