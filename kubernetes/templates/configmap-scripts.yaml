@@ -187,8 +187,8 @@ data:
       counter=0
 
       echo "[+] Wait up to 60s until traefik is up"
-      while [ $(curl -s "http://localhost:8081/ping") != 'OK' ] ; do
-        if [ $counter —le 20 ] ; then
+      while [ "$(curl -s 'http://localhost:8081/ping')" != 'OK' ] ; do
+        if [ $counter -le 20 ] ; then
           sleep 3
           counter=$((counter+1))
         else
