@@ -32,6 +32,9 @@ data:
       [metrics.statistics]
       recentErrors = 10
 
+    [ping]
+    entryPoint = "ping"
+
     [kubernetes]
     endpoint = {{ .Values.traefikConfigK8sEndpoint | quote }}
 
@@ -68,6 +71,8 @@ data:
       address = ":443"
       compress = true
         [entryPoints.https.tls]
+      [entryPoints.ping]
+      address = ":8081"
   resolv.conf: |-
     nameserver {{ .Values.traefikResolvConfNameServer }}
     search {{ .Release.Namespace }}.svc.{{ .Values.traefikResolvConfDomainNameCluster }} svc.{{ .Values.traefikResolvConfDomainNameCluster }} {{ .Values.traefikResolvConfDomainNameCluster }}

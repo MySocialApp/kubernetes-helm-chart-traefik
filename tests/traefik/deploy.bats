@@ -20,3 +20,11 @@ load ../k8s-euft/env
     exit 1
   fi
 }
+
+@test "Check that ping port is working fine" {
+  instance_name=$(kubectl get po -l app=traefik | awk '/^traefik/{ print $1 }' | tail -1)
+  if [ "$(kubectl exec -it $instance_name curl http://127.0.0.1:8081/ping)" != 'OK' ] ; then
+    echo "Error while getting consul key info"
+    exit 1
+  fi
+}
