@@ -1,5 +1,5 @@
 apiVersion: extensions/v1beta1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: {{ template "kubernetes.name" . }}
   namespace: {{ .Release.Namespace }}
@@ -9,13 +9,25 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
-  updateStrategy:
-    type: "RollingUpdate"
+  replicas: {{ .Values.traefikReplicas }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       labels:
         app: {{ template "kubernetes.name" . }}
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ template "kubernetes.name" . }}
+            topologyKey: kubernetes.io/hostname
       nodeSelector:
         {{- range $key, $val := .Values.traefikNodeSelector }}
         {{ $key }}: {{ $val | quote }}
