@@ -6,11 +6,23 @@ load ../k8s-euft/env
   helm upgrade --install --force --values tests/traefik/traefik.yaml traefik kubernetes
 }
 
-@test "Waiting all Traefik to be ready" {
-  while [ $(kubectl get po -l app=traefik | grep -c Running) != 3 ] ; do
-    sleep 5
-  done
-  echo "Traefik is ready"
+@test "Wait for traefik to be ready" {
+    CURRENT_NODES=0
+    READY_NODES=0
+
+    # Ensure the number of desired pod has been bootstraped
+    while [ "$CURRENT_NODES" != "$NUM_NODES" ] ; do
+        sleep 5
+        CURRENT_NODES=$(kubectl get pod -l app=traefik | grep Running | wc -l)
+        echo "Kubernetes running nodes: $CURRENT_NODES/$NUM_NODES, waiting..." >&3
+    done
+
+    # Ensure the state of each pod is fully ready
+    while [ "$READY_NODES" != "$NUM_NODES" ] ; do
+        sleep 5
+        READY_NODES=$(kubectl get pod -l app=traefik | awk '{ print $2 }' | grep -v READY | awk -F'/' '{ print ($1 == $2) ? "true" : "false" }' | grep true | wc -l)
+        echo "Kubernetes running ready nodes: $READY_NODES/$NUM_NODES, waiting..." >&3
+    done
 }
 
 @test "Ensure Traefik has config in Consul" {
