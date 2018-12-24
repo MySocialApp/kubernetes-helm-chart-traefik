@@ -2,7 +2,7 @@
 traefikNodeSelector:
   node-role.kubernetes.io/node: "true"
 
-traefikImageVersion: v1.7.5-alpine
+traefikImageVersion: v1.7.6-alpine
 traefikReplicas: 3
 traefikConfig:
   resources:
@@ -22,6 +22,7 @@ traefikConfigAcmeEmail: "my@email.com"
 traefikConfigAcmeDnsProvider: "cloudflare"
 traefikConfigAcmeCloudflareEmail: "my@email.com"
 traefikConfigAcmeCloudflareApiKey: "key"
+# Wildcard domains only
 traefikConfigAcmeDomains:
   - "domain1"
   - "domain2"

@@ -57,7 +57,8 @@ data:
 
     {{- range .Values.traefikConfigAcmeDomains }}
     [[acme.domains]]
-      main = {{ . | quote }}
+      main = "*.{{ . }}"
+      sans = ["{{ . }}"]
     {{- end }}
     {{ end }}
 
