@@ -2,7 +2,7 @@
 traefikNodeSelector:
   node-role.kubernetes.io/node: "true"
 
-traefikImageVersion: v1.7.6-alpine
+traefikImageVersion: v1.7.9-alpine
 traefikReplicas: 3
 traefikConfig:
   resources:
